@@ -4,14 +4,14 @@
 # dependencies only.
 ##
 
-FROM node:22-bookworm-slim AS builder
+FROM node:25-bookworm-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM node:22-bookworm-slim
+FROM node:25-bookworm-slim
 RUN set -x \
     && addgroup --gid 10001 app \
     && adduser --disabled-password \
