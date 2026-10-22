@@ -1,13 +1,17 @@
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const uaparser = require('ua-parser-js');
+const { UAParser } = require('ua-parser-js');
 const storage = require('../storage');
 const config = require('../config');
 const auth = require('../middleware/auth');
 const language = require('../middleware/language');
+const ratelimit = require('../middleware/ratelimit');
 const pages = require('./pages');
 const filelist = require('./filelist');
+const authRoutes = require('./auth');
+const billingRoutes = require('./billing');
+const publicReport = require('./publicReport');
 const clientConstants = require('../clientConstants');
 
 const IS_DEV = config.env === 'development';
@@ -15,15 +19,21 @@ const ID_REGEX = '([0-9a-fA-F]{10,16})';
 
 module.exports = function(app) {
   app.set('trust proxy', true);
-  app.use(helmet());
+  // CSP is configured explicitly below (production only), so disable
+  // helmet's built-in default CSP here — helmet >= 4 enables one by
+  // default, which would intersect with and break the nonce policy.
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
     helmet.hsts({
       maxAge: 31536000,
-      force: !IS_DEV
+      includeSubDomains: true
     })
   );
   app.use(function(req, res, next) {
-    req.ua = uaparser(req.header('user-agent'));
+    // ua-parser-js 1.x: UAParser() returns a parser; getResult() gives
+    // the {ua, browser, os, ...} shape the rest of the server consumes.
+    const parsed = UAParser(req.header('user-agent') || '');
+    req.ua = typeof parsed.getResult === 'function' ? parsed.getResult() : parsed;
     next();
   });
   app.use(function(req, res, next) {
@@ -51,35 +61,15 @@ module.exports = function(app) {
         reportUri: '/__cspreport__'
       }
     };
-    if (config.fxa_client_id) {
-      csp.directives.connectSrc.push('https://accounts.firefox.com');
-      csp.directives.connectSrc.push('https://*.accounts.firefox.com');
-      csp.directives.imgSrc.push('https://firefoxusercontent.com');
-      csp.directives.imgSrc.push('https://secure.gravatar.com');
-    }
-    if (config.sentry_id) {
+    if (config.sentry_id && config.sentry_host) {
       csp.directives.connectSrc.push(config.sentry_host);
     }
-    if (
-      /^https:\/\/.*\.dev\.lcip\.org$/.test(config.base_url) ||
-      /^https:\/\/.*\.send\.nonprod\.cloudops\.mozgcp\.net$/.test(
-        config.base_url
-      )
-    ) {
-      csp.directives.connectSrc.push('https://*.dev.lcip.org');
-      csp.directives.imgSrc.push('https://*.dev.lcip.org');
-    }
-    if (config.fxa_csp_oauth_url != '') {
-      csp.directives.connectSrc.push(config.fxa_csp_oauth_url);
-    }
-    if (config.fxa_csp_content_url != '') {
-      csp.directives.connectSrc.push(config.fxa_csp_content_url);
-    }
-    if (config.fxa_csp_profile_url != '') {
-      csp.directives.connectSrc.push(config.fxa_csp_profile_url);
-    }
-    if (config.fxa_csp_profileimage_url != '') {
-      csp.directives.imgSrc.push(config.fxa_csp_profileimage_url);
+    if (config.turnstile_site_key) {
+      // The Turnstile widget is loaded from Cloudflare when the bot
+      // gate is configured.
+      csp.directives.scriptSrc.push('https://challenges.cloudflare.com');
+      csp.directives.frameSrc = ['https://challenges.cloudflare.com'];
+      csp.directives.connectSrc.push('https://challenges.cloudflare.com');
     }
 
     app.use(helmet.contentSecurityPolicy(csp));
@@ -106,6 +96,13 @@ module.exports = function(app) {
     }
     next();
   });
+  // The Stripe webhook needs the raw request body for signature
+  // verification, so it is mounted BEFORE the JSON body parser.
+  app.post(
+    '/api/billing/webhook',
+    bodyParser.raw({ type: 'application/json' }),
+    billingRoutes.webhook
+  );
   app.use(bodyParser.json());
   app.use(bodyParser.text());
   app.get('/', language, pages.index);
@@ -113,16 +110,27 @@ module.exports = function(app) {
     res.json(clientConstants);
   });
   app.get('/error', language, pages.blank);
-  app.get('/oauth', language, pages.blank);
   app.get('/login', language, pages.index);
   app.get('/report', language, pages.blank);
+  app.get('/report-abuse', publicReport.page);
   app.get('/app.webmanifest', language, require('./webmanifest'));
   app.get(`/download/:id${ID_REGEX}`, language, pages.download);
   app.get('/unsupported/:reason', language, pages.unsupported);
-  app.get(`/api/download/token/:id${ID_REGEX}`, auth.hmac, require('./token'));
-  app.get(`/api/download/:id${ID_REGEX}`, auth.dlToken, require('./download'));
+  app.get(
+    `/api/download/token/:id${ID_REGEX}`,
+    ratelimit.middleware('download'),
+    auth.hmac,
+    require('./token')
+  );
+  app.get(
+    `/api/download/:id${ID_REGEX}`,
+    ratelimit.middleware('download'),
+    auth.dlToken,
+    require('./download')
+  );
   app.get(
     `/api/download/blob/:id${ID_REGEX}`,
+    ratelimit.middleware('download'),
     auth.dlToken,
     require('./download')
   );
@@ -133,14 +141,30 @@ module.exports = function(app) {
   );
   app.get(`/api/exists/:id${ID_REGEX}`, require('./exists'));
   app.get(`/api/metadata/:id${ID_REGEX}`, auth.hmac, require('./metadata'));
-  app.get('/api/filelist/:id([\\w-]{16})', auth.fxa, filelist.get);
-  app.post('/api/filelist/:id([\\w-]{16})', auth.fxa, filelist.post);
-  // app.post('/api/upload', auth.fxa, require('./upload'));
+  app.get('/api/filelist/:id([\\w-]{16})', auth.session, filelist.get);
+  app.post('/api/filelist/:id([\\w-]{16})', auth.session, filelist.post);
   app.post(`/api/delete/:id${ID_REGEX}`, auth.owner, require('./delete'));
   app.post(`/api/password/:id${ID_REGEX}`, auth.owner, require('./password'));
   app.post(`/api/params/:id${ID_REGEX}`, auth.owner, require('./params'));
   app.post(`/api/info/:id${ID_REGEX}`, auth.owner, require('./info'));
-  app.post(`/api/report/:id${ID_REGEX}`, auth.hmac, require('./report'));
+  app.post(
+    `/api/report/:id${ID_REGEX}`,
+    ratelimit.middleware('report'),
+    auth.hmac,
+    require('./report')
+  );
+  app.post(
+    '/api/public-report',
+    ratelimit.middleware('report'),
+    publicReport.submit
+  );
+  // SendSmith accounts + billing (server/users.js, server/billing.js)
+  app.post('/api/auth/signup', ratelimit.middleware('auth'), authRoutes.signup);
+  app.post('/api/auth/login', ratelimit.middleware('auth'), authRoutes.login);
+  app.post('/api/auth/logout', authRoutes.logout);
+  app.get('/api/auth/me', authRoutes.me);
+  app.post('/api/billing/checkout', billingRoutes.checkout);
+  app.get('/api/billing/portal', billingRoutes.portal);
   app.post('/api/metrics', require('./metrics'));
   app.get('/__version__', function(req, res) {
     // eslint-disable-next-line node/no-missing-require

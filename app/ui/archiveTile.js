@@ -128,10 +128,10 @@ function fileInfo(file, action) {
 function archiveInfo(archive, action) {
   return html`
     <p class="w-full flex items-center">
-      <svg class="h-8 w-6 mr-3 flex-shrink-0 text-white dark:text-grey-90">
+      <svg class="h-8 w-6 mr-3 shrink-0 text-white dark:text-grey-90">
         <use xlink:href="${assets.get('blue_file.svg')}#icon"/>
       </svg>
-      <p class="flex-grow">
+      <p class="grow">
         <h1 class="text-base font-medium word-break-all">${archive.name}</h1>
         <div class="text-sm font-normal opacity-75 pt-1">${bytes(
           archive.size
@@ -230,7 +230,7 @@ module.exports = function(state, emit, archive) {
         html`
           <input
             type="image"
-            class="self-start flex-shrink-0 text-white hover:opacity-75 focus:outline"
+            class="self-start shrink-0 text-white hover:opacity-75 focus:outline"
             alt="${state.translate('deleteButtonHover')}"
             title="${state.translate('deleteButtonHover')}"
             src="${assets.get('close-16.svg')}"
@@ -273,7 +273,7 @@ module.exports = function(state, emit, archive) {
       try {
         await navigator.share({
           title: state.translate('-send-brand'),
-          text: `Download "${archive.name}" with Firefox Send: simple, safe file sharing`,
+          text: `Download "${archive.name}" with SendSmith — encrypted file transfer that self-destructs`,
           //state.translate('shareMessage', { name }),
           url: archive.url
         });
@@ -296,11 +296,11 @@ module.exports.wip = function(state, emit) {
           .map(f =>
             fileInfo(f, remove(f, state.translate('deleteButtonHover')))
           ),
-        'flex-shrink bg-grey-10 rounded-t overflow-y-auto px-6 py-4 md:h-full md:max-h-half-screen dark:bg-black',
+        'shrink bg-grey-10 rounded-t overflow-y-auto px-6 py-4 md:h-full md:max-h-half-screen dark:bg-black',
         'bg-white px-2 my-2 shadow-light rounded dark:bg-grey-90 dark:border dark:border-grey-80'
       )}
       <div
-        class="flex-shrink-0 flex-grow flex items-end p-4 bg-grey-10 rounded-b mb-1 font-medium dark:bg-grey-90"
+        class="shrink-0 grow flex items-end p-4 bg-grey-10 rounded-b mb-1 font-medium dark:bg-grey-90"
       >
         <input
           id="file-upload"
@@ -335,7 +335,7 @@ module.exports.wip = function(state, emit) {
       ${expiryOptions(state, emit)} ${password(state, emit)}
       <button
         id="upload-btn"
-        class="btn rounded-lg flex-shrink-0 focus:outline"
+        class="btn rounded-lg shrink-0 focus:outline"
         title="${state.translate('uploadButton')}"
         onclick="${upload}"
       >
@@ -549,7 +549,7 @@ module.exports.preview = function(state, emit) {
       <button
         id="download-btn"
         disabled
-        class="btn rounded-lg mt-4 w-full flex-shrink-0 focus:outline"
+        class="btn rounded-lg mt-4 w-full shrink-0 focus:outline"
         title="${state.translate('downloadButtonLabel')}"
         onclick=${download}
       >

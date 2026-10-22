@@ -85,7 +85,7 @@ module.exports = function(state, emit) {
             <input
               type="submit"
               disabled
-              class="btn rounded-lg w-full flex-shrink-0 focus:outline"
+              class="btn rounded-lg w-full shrink-0 focus:outline"
               title="${state.translate('reportButton')}"
               value="${state.translate('reportButton')}"
             />

@@ -29,7 +29,7 @@ module.exports = function() {
         <button
           id="download-btn"
           disabled
-          class="btn rounded-lg w-full flex-shrink-0"
+          class="btn rounded-lg w-full shrink-0"
           onclick="${download}"
           title="${state.translate('downloadButtonLabel')}"
         >

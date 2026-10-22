@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node 22 is the production LTS target; Node 24 is the
+        # forward-compat check (see docs/UPGRADING.md).
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Backend tests (incl. crypto golden vectors)
+        run: npm run test:backend
+      - name: Boot smoke + protocol e2e
+        run: |
+          FILE_DIR=$RUNNER_TEMP/sendfiles BASE_URL=http://localhost:1443 PORT=1443 node server/bin/prod.js &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:1443/__lbheartbeat__ && break || sleep 1
+          done
+          curl -fsS http://localhost:1443/__heartbeat__
+          npm run test:e2e

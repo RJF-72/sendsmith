@@ -1,13 +1,12 @@
 const fss = require('fs');
 const fs = fss.promises;
 const path = require('path');
-const mkdirp = require('mkdirp');
 
 class FSStorage {
   constructor(config, log) {
     this.log = log;
     this.dir = config.file_dir;
-    mkdirp.sync(this.dir);
+    fss.mkdirSync(this.dir, { recursive: true });
   }
 
   async length(id) {

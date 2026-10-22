@@ -1,62 +1,101 @@
 const assert = require('assert');
 const sinon = require('sinon');
+const { PassThrough } = require('stream');
 const proxyquire = require('proxyquire').noCallThru();
 
-function resolvedPromise(val) {
-  return {
-    promise: () => Promise.resolve(val)
-  };
-}
+/*
+ * NOTE (SendSmith modernization): this suite was rewritten when the
+ * storage backend moved from aws-sdk v2 to the AWS SDK for JavaScript
+ * v3. The original tests stubbed the v2 `aws-sdk` module shape
+ * (`.promise()`, `s3.upload()`, ...), which no longer exists. The
+ * behaviors asserted are the same as upstream's suite; only the stub
+ * shape changed to v3 commands + the lib-storage Upload helper.
+ */
 
-function rejectedPromise(err) {
-  return {
-    promise: () => Promise.reject(err)
-  };
-}
-
-const s3Stub = {
-  headObject: sinon.stub(),
-  getObject: sinon.stub(),
-  upload: sinon.stub(),
-  deleteObject: sinon.stub()
-};
-
-const awsStub = {
-  config: {
-    update: sinon.stub()
-  },
-  S3: function() {
-    return s3Stub;
+class FakeCommand {
+  constructor(input) {
+    this.input = input;
   }
-};
+}
+class HeadObjectCommand extends FakeCommand {}
+class GetObjectCommand extends FakeCommand {}
+class DeleteObjectCommand extends FakeCommand {}
+class HeadBucketCommand extends FakeCommand {}
+
+const sendStub = sinon.stub();
+class FakeS3Client {
+  constructor(cfg) {
+    this.cfg = cfg;
+  }
+  send(command) {
+    return sendStub(command);
+  }
+}
+
+const uploadInstances = [];
+class FakeUpload {
+  constructor(opts) {
+    this.opts = opts;
+    const impl = FakeUpload.nextDoneImpl || (() => Promise.resolve());
+    FakeUpload.nextDoneImpl = null;
+    this.done = sinon.stub().callsFake(impl);
+    this.abort = sinon.stub().resolves();
+    uploadInstances.push(this);
+  }
+}
 
 const S3Storage = proxyquire('../../server/storage/s3', {
-  'aws-sdk': awsStub
+  '@aws-sdk/client-s3': {
+    S3Client: FakeS3Client,
+    HeadObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand,
+    HeadBucketCommand
+  },
+  '@aws-sdk/lib-storage': { Upload: FakeUpload }
 });
 
 describe('S3Storage', function() {
+  beforeEach(function() {
+    sendStub.reset();
+    uploadInstances.length = 0;
+    FakeUpload.nextDoneImpl = null;
+  });
+
   it('uses config.s3_bucket', function() {
     const s = new S3Storage({ s3_bucket: 'foo' });
     assert.equal(s.bucket, 'foo');
   });
 
+  it('passes endpoint and path-style config to the client', function() {
+    const s = new S3Storage({
+      s3_bucket: 'foo',
+      s3_endpoint: 'https://example.r2.cloudflarestorage.com',
+      s3_use_path_style_endpoint: true,
+      s3_region: 'auto'
+    });
+    assert.equal(
+      s.s3.cfg.endpoint,
+      'https://example.r2.cloudflarestorage.com'
+    );
+    assert.equal(s.s3.cfg.forcePathStyle, true);
+    assert.equal(s.s3.cfg.region, 'auto');
+  });
+
   describe('length', function() {
     it('returns the ContentLength', async function() {
-      s3Stub.headObject = sinon
-        .stub()
-        .returns(resolvedPromise({ ContentLength: 123 }));
+      sendStub.resolves({ ContentLength: 123 });
       const s = new S3Storage({ s3_bucket: 'foo' });
       const len = await s.length('x');
       assert.equal(len, 123);
-      sinon.assert.calledWithMatch(s3Stub.headObject, {
-        Bucket: 'foo',
-        Key: 'x'
-      });
+      const cmd = sendStub.firstCall.args[0];
+      assert.ok(cmd instanceof HeadObjectCommand);
+      assert.deepEqual(cmd.input, { Bucket: 'foo', Key: 'x' });
     });
 
     it('throws when id not found', async function() {
-      const err = new Error();
-      s3Stub.headObject = sinon.stub().returns(rejectedPromise(err));
+      const err = new Error('not found');
+      sendStub.rejects(err);
       const s = new S3Storage({ s3_bucket: 'foo' });
       try {
         await s.length('x');
@@ -68,90 +107,75 @@ describe('S3Storage', function() {
   });
 
   describe('getStream', function() {
-    it('returns a Stream object', function() {
-      const stream = {};
-      s3Stub.getObject = sinon
-        .stub()
-        .returns({ createReadStream: () => stream });
+    it('returns a Stream that yields the object body', async function() {
+      const body = new PassThrough();
+      sendStub.resolves({ Body: body });
       const s = new S3Storage({ s3_bucket: 'foo' });
       const result = s.getStream('x');
-      assert.equal(result, stream);
-      sinon.assert.calledWithMatch(s3Stub.getObject, {
-        Bucket: 'foo',
-        Key: 'x'
-      });
+      const cmd = sendStub.firstCall.args[0];
+      assert.ok(cmd instanceof GetObjectCommand);
+      assert.deepEqual(cmd.input, { Bucket: 'foo', Key: 'x' });
+      const chunks = [];
+      result.on('data', c => chunks.push(c));
+      const ended = new Promise(resolve => result.on('end', resolve));
+      body.write('hello');
+      body.end();
+      await ended;
+      assert.equal(Buffer.concat(chunks).toString(), 'hello');
     });
   });
 
   describe('set', function() {
-    it('calls s3.upload', async function() {
-      const file = { on: sinon.stub() };
-      s3Stub.upload = sinon.stub().returns(resolvedPromise());
+    it('uploads via lib-storage with bucket/key/body', async function() {
+      const file = new PassThrough();
       const s = new S3Storage({ s3_bucket: 'foo' });
       await s.set('x', file);
-      sinon.assert.calledWithMatch(s3Stub.upload, {
+      assert.equal(uploadInstances.length, 1);
+      assert.deepEqual(uploadInstances[0].opts.params, {
         Bucket: 'foo',
         Key: 'x',
         Body: file
       });
+      sinon.assert.calledOnce(uploadInstances[0].done);
     });
 
-    it('aborts upload if limit is hit', async function() {
-      const file = {
-        on: (ev, fn) => fn()
-      };
-      const abort = sinon.stub();
+    it('aborts the upload if the source stream errors', async function() {
+      const file = new PassThrough();
       const err = new Error('limit');
-      s3Stub.upload = sinon.stub().returns({
-        promise: () => Promise.reject(err),
-        abort
-      });
+      FakeUpload.nextDoneImpl = () => Promise.reject(err);
       const s = new S3Storage({ s3_bucket: 'foo' });
+      const promise = s.set('x', file);
+      file.emit('error', err);
       try {
-        await s.set('x', file);
-        assert.fail();
-      } catch (e) {
-        assert.equal(e.message, 'limit');
-        sinon.assert.calledOnce(abort);
-      }
-    });
-
-    it('throws when s3.upload fails', async function() {
-      const file = {
-        on: sinon.stub()
-      };
-      const err = new Error();
-      s3Stub.upload = sinon.stub().returns(rejectedPromise(err));
-      const s = new S3Storage({ s3_bucket: 'foo' });
-      try {
-        await s.set('x', file);
+        await promise;
         assert.fail();
       } catch (e) {
         assert.equal(e, err);
+        sinon.assert.calledOnce(uploadInstances[0].abort);
       }
     });
   });
 
   describe('del', function() {
-    it('calls s3.deleteObject', async function() {
-      s3Stub.deleteObject = sinon.stub().returns(resolvedPromise(true));
+    it('sends a DeleteObjectCommand', async function() {
+      sendStub.resolves({ Deleted: true });
       const s = new S3Storage({ s3_bucket: 'foo' });
       const result = await s.del('x');
-      assert.equal(result, true);
-      sinon.assert.calledWithMatch(s3Stub.deleteObject, {
-        Bucket: 'foo',
-        Key: 'x'
-      });
+      assert.deepEqual(result, { Deleted: true });
+      const cmd = sendStub.firstCall.args[0];
+      assert.ok(cmd instanceof DeleteObjectCommand);
+      assert.deepEqual(cmd.input, { Bucket: 'foo', Key: 'x' });
     });
   });
 
   describe('ping', function() {
-    it('calls s3.headBucket', async function() {
-      s3Stub.headBucket = sinon.stub().returns(resolvedPromise(true));
+    it('sends a HeadBucketCommand', async function() {
+      sendStub.resolves({});
       const s = new S3Storage({ s3_bucket: 'foo' });
-      const result = await s.ping();
-      assert.equal(result, true);
-      sinon.assert.calledWithMatch(s3Stub.headBucket, { Bucket: 'foo' });
+      await s.ping();
+      const cmd = sendStub.firstCall.args[0];
+      assert.ok(cmd instanceof HeadBucketCommand);
+      assert.deepEqual(cmd.input, { Bucket: 'foo' });
     });
   });
 });

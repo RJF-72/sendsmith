@@ -9,18 +9,14 @@ module.exports = function(state, emit) {
   if (state.params.reason !== 'outdated') {
     strings = unsupportedStrings(state);
     why = html`
-      <a
-        class="text-blue"
-        href="https://github.com/mozilla/send/blob/master/docs/faq.md#why-is-my-browser-not-supported"
-      >
+      <a class="text-blue" href="https://browsehappy.com/">
         ${state.translate('notSupportedLink')}
       </a>
     `;
-    url =
-      'https://www.mozilla.org/firefox/new/?utm_campaign=send-acquisition&utm_medium=referral&utm_source=send.firefox.com';
+    url = 'https://browsehappy.com/';
   } else {
     strings = outdatedStrings(state);
-    url = 'https://support.mozilla.org/kb/update-firefox-latest-version';
+    url = 'https://browsehappy.com/';
   }
 
   return html`

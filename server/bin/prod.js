@@ -1,20 +1,26 @@
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const Sentry = require('@sentry/node');
 const config = require('../config');
+const { validateConfig } = require('../validateConfig');
 const routes = require('../routes');
 const pages = require('../routes/pages');
-const expressWs = require('@dannycoates/express-ws');
+const attachWs = require('../wsServer');
 
+// Fail fast on missing/invalid required configuration instead of
+// booting into a silently broken state (see server/validateConfig.js).
+validateConfig();
+
+// Sentry is strictly opt-in: nothing is sent anywhere unless the
+// operator sets SENTRY_DSN for their own Sentry instance.
 if (config.sentry_dsn) {
   Sentry.init({ dsn: config.sentry_dsn });
 }
 
 const app = express();
 
-expressWs(app, null, { perMessageDeflate: false });
 routes(app);
-app.ws('/api/ws', require('../routes/ws'));
 
 app.use(
   express.static(path.resolve(__dirname, '../../dist/'), {
@@ -29,4 +35,6 @@ app.use(
 
 app.use(pages.notfound);
 
-app.listen(config.listen_port, config.listen_address);
+const httpServer = http.createServer(app);
+attachWs(httpServer);
+httpServer.listen(config.listen_port, config.listen_address);

@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const fetch = require('node-fetch');
 const config = require('./config');
 const pkg = require('../package.json');
 
@@ -168,6 +167,7 @@ async function sendBatch(events, timeout = 1000) {
     return 200;
   }
   try {
+    // Native fetch (Node >= 18) replaces the node-fetch dependency.
     const result = await fetch('https://api.amplitude.com/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -175,7 +175,7 @@ async function sendBatch(events, timeout = 1000) {
         api_key: config.amplitude_id,
         events
       }),
-      timeout
+      signal: AbortSignal.timeout(timeout)
     });
     return result.status;
   } catch (e) {

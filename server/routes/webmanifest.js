@@ -2,8 +2,8 @@ const assets = require('../../common/assets');
 
 module.exports = function(req, res) {
   const manifest = {
-    name: 'Firefox Send',
-    short_name: 'Send',
+    name: 'SendSmith',
+    short_name: 'SendSmith',
     lang: req.language,
     icons: [
       {
@@ -20,7 +20,7 @@ module.exports = function(req, res) {
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    theme_color: '#220033',
+    theme_color: '#2b2320',
     background_color: 'white'
   };
   res.set('Content-Type', 'application/manifest+json');

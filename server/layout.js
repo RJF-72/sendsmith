@@ -14,8 +14,8 @@ module.exports = function(state, body = '') {
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#220033" />
-        <meta name="msapplication-TileColor" content="#220033" />
+        <meta name="theme-color" content="#2b2320" />
+        <meta name="msapplication-TileColor" content="#2b2320" />
 
         <link rel="manifest" href="/app.webmanifest" />
         <link rel="stylesheet" type="text/css" href="/inter.css" />
@@ -51,14 +51,7 @@ module.exports = function(state, body = '') {
       <noscript>
         <div class="noscript">
           <h2>${state.translate('javascriptRequired')}</h2>
-          <p>
-            <a
-              class="link"
-              href="https://github.com/mozilla/send/blob/master/docs/faq.md#why-does-firefox-send-require-javascript"
-            >
-              ${state.translate('whyJavascript')}
-            </a>
-          </p>
+          <p>${state.translate('whyJavascript')}</p>
           <p>${state.translate('enableJavascript')}</p>
         </div>
       </noscript>

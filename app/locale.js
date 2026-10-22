@@ -1,8 +1,8 @@
-import { FluentBundle } from '@fluent/bundle';
+import { FluentBundle, FluentResource } from '@fluent/bundle';
 
 function makeBundle(locale, ftl) {
   const bundle = new FluentBundle(locale, { useIsolating: false });
-  bundle.addMessages(ftl);
+  bundle.addResource(new FluentResource(ftl));
   return bundle;
 }
 
@@ -19,7 +19,10 @@ export async function getTranslator(locale) {
   return function(id, data) {
     for (let bundle of bundles) {
       if (bundle.hasMessage(id)) {
-        return bundle.format(bundle.getMessage(id), data);
+        const msg = bundle.getMessage(id);
+        if (msg && msg.value) {
+          return bundle.formatPattern(msg.value, data);
+        }
       }
     }
   };

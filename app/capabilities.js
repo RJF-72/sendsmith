@@ -68,7 +68,7 @@ function checkStreams() {
 
 async function polyfillStreams() {
   try {
-    await import('@mattiasbuelens/web-streams-polyfill');
+    await import('web-streams-polyfill/polyfill');
     return true;
   } catch (e) {
     return false;

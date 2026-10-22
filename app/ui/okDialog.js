@@ -8,7 +8,7 @@ module.exports = function(message) {
           ${message}
         </h2>
         <button
-          class="btn rounded-lg w-full flex-shrink-0"
+          class="btn rounded-lg w-full shrink-0"
           onclick="${close}"
           title="${state.translate('okButton')}"
         >

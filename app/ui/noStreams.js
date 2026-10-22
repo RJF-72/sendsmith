@@ -19,10 +19,10 @@ module.exports = function(state, emit) {
       <form class="md:w-128" onsubmit=${submit}>
         <fieldset class="border rounded p-4 my-4" onchange=${optionChanged}>
           <div class="flex items-center mb-2">
-            <svg class="h-8 w-6 mr-3 flex-shrink-0 text-white dark:text-grey-90">
+            <svg class="h-8 w-6 mr-3 shrink-0 text-white dark:text-grey-90">
               <use xlink:href="${assets.get('blue_file.svg')}#icon"/>
             </svg>
-            <p class="flex-grow">
+            <p class="grow">
               <h1 class="text-base font-medium word-break-all">${
                 archive.name
               }</h1>
@@ -38,8 +38,8 @@ module.exports = function(state, emit) {
             )}</label>
           </div>
           <div class="my-3">
-            <input class="mx-2" type="radio" name="gus" id="firefox" value="firefox">
-            <label class="" for="firefox">${state.translate(
+            <input class="mx-2" type="radio" name="gus" id="browser" value="browser">
+            <label class="" for="browser">${state.translate(
               'noStreamsOptionFirefox'
             )}</label>
           </div>
@@ -51,7 +51,7 @@ module.exports = function(state, emit) {
           </div>
         </fieldset>
         <input
-            class="btn rounded-lg w-full flex flex-shrink-0 items-center justify-center"
+            class="btn rounded-lg w-full flex shrink-0 items-center justify-center"
             value="${state.translate('copyLinkButton')}"
             title="${state.translate('copyLinkButton')}"
             type="submit" />
@@ -74,7 +74,7 @@ module.exports = function(state, emit) {
       case 'copy':
         title = state.translate('copyLinkButton');
         break;
-      case 'firefox':
+      case 'browser':
         title = state.translate('downloadFirefox');
         break;
       case 'download':
@@ -94,10 +94,8 @@ module.exports = function(state, emit) {
           'copiedUrl'
         );
         break;
-      case 'firefox':
-        window.open(
-          'https://www.mozilla.org/firefox/new/?utm_campaign=send-acquisition&utm_medium=referral&utm_source=send.firefox.com'
-        );
+      case 'browser':
+        window.open('https://browsehappy.com/');
         break;
       case 'download':
         emit('download', archive);

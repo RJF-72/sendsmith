@@ -1,0 +1,27 @@
+# Dependabot: weekly dependency + base-image updates.
+# See docs/UPGRADING.md for the review procedure.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      aws-sdk-v3:
+        patterns:
+          - "@aws-sdk/*"
+      fluent:
+        patterns:
+          - "@fluent/*"
+      sentry:
+        patterns:
+          - "@sentry/*"
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

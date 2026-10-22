@@ -1,7 +1,7 @@
 const assert = require('assert');
 const crypto = require('crypto');
 const storage = require('../storage');
-const fxa = require('../fxa');
+const users = require('../users');
 
 module.exports = {
   hmac: async function(req, res, next) {
@@ -64,13 +64,16 @@ module.exports = {
       res.sendStatus(401);
     }
   },
-  fxa: async function(req, res, next) {
-    const authHeader = req.header('Authorization');
-    if (authHeader && /^Bearer\s/i.test(authHeader)) {
-      const token = authHeader.split(' ')[1];
-      req.user = await fxa.verify(token);
-    }
-    if (req.user) {
+  // SendSmith session auth (replaces the old Firefox Accounts
+  // middleware). Accepts the session cookie or a Bearer session
+  // token. On success req.user is the user id string (the filelist
+  // routes key on it, as they did with the FxA uid) and req.userObj
+  // is the full user record.
+  session: async function(req, res, next) {
+    const user = await users.verifyRequest(req);
+    if (user) {
+      req.user = user.id;
+      req.userObj = user;
       next();
     } else {
       res.sendStatus(401);

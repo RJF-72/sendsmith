@@ -1,7 +1,30 @@
 const convict = require('convict');
 const { tmpdir } = require('os');
 const path = require('path');
+const net = require('net');
 const { randomBytes } = require('crypto');
+
+// Convict 6 removed the built-in 'ipaddress' and 'url' formats this
+// schema was written against; re-register them with platform APIs.
+convict.addFormat({
+  name: 'ipaddress',
+  validate: val => {
+    if (!net.isIP(val)) {
+      throw new Error('must be an IP address');
+    }
+  }
+});
+convict.addFormat({
+  name: 'url',
+  validate: val => {
+    try {
+      // eslint-disable-next-line no-new
+      new URL(val);
+    } catch (e) {
+      throw new Error('must be a URL');
+    }
+  }
+});
 
 const conf = convict({
   s3_bucket: {
@@ -18,6 +41,11 @@ const conf = convict({
     format: Boolean,
     default: false,
     env: 'S3_USE_PATH_STYLE_ENDPOINT'
+  },
+  s3_region: {
+    format: String,
+    default: 'us-east-1',
+    env: 'S3_REGION'
   },
   gcs_bucket: {
     format: String,
@@ -74,6 +102,16 @@ const conf = convict({
     default: 'mock',
     env: 'REDIS_HOST'
   },
+  redis_port: {
+    format: 'port',
+    default: 6379,
+    env: 'REDIS_PORT'
+  },
+  redis_password: {
+    format: String,
+    default: '',
+    env: 'REDIS_PASSWORD'
+  },
   redis_event_expire: {
     format: Boolean,
     default: false,
@@ -122,7 +160,7 @@ const conf = convict({
   },
   sentry_host: {
     format: String,
-    default: 'https://sentry.prod.mozaws.net',
+    default: '',
     env: 'SENTRY_HOST'
   },
   env: {
@@ -137,8 +175,91 @@ const conf = convict({
   },
   anon_max_file_size: {
     format: Number,
-    default: 1024 * 1024 * 1024,
+    // SendSmith default: anonymous uploads are capped well below
+    // Mozilla's old 1 GB (see docs/abuse.md). Accounts get the larger
+    // max_file_size limits.
+    default: 200 * 1024 * 1024,
     env: 'ANON_MAX_FILE_SIZE'
+  },
+  session_ttl_seconds: {
+    format: Number,
+    default: 86400 * 30,
+    env: 'SESSION_TTL_SECONDS'
+  },
+  free_monthly_quota_bytes: {
+    format: Number,
+    default: 2 * 1024 * 1024 * 1024,
+    env: 'FREE_MONTHLY_QUOTA_BYTES'
+  },
+  pro_monthly_quota_bytes: {
+    format: Number,
+    default: 200 * 1024 * 1024 * 1024,
+    env: 'PRO_MONTHLY_QUOTA_BYTES'
+  },
+  ratelimit_upload_max: {
+    format: Number,
+    default: 30,
+    env: 'RATELIMIT_UPLOAD_MAX'
+  },
+  ratelimit_upload_window_seconds: {
+    format: Number,
+    default: 3600,
+    env: 'RATELIMIT_UPLOAD_WINDOW_SECONDS'
+  },
+  ratelimit_download_max: {
+    format: Number,
+    default: 600,
+    env: 'RATELIMIT_DOWNLOAD_MAX'
+  },
+  ratelimit_download_window_seconds: {
+    format: Number,
+    default: 3600,
+    env: 'RATELIMIT_DOWNLOAD_WINDOW_SECONDS'
+  },
+  ratelimit_report_max: {
+    format: Number,
+    default: 10,
+    env: 'RATELIMIT_REPORT_MAX'
+  },
+  ratelimit_report_window_seconds: {
+    format: Number,
+    default: 86400,
+    env: 'RATELIMIT_REPORT_WINDOW_SECONDS'
+  },
+  ratelimit_auth_max: {
+    format: Number,
+    default: 30,
+    env: 'RATELIMIT_AUTH_MAX'
+  },
+  ratelimit_auth_window_seconds: {
+    format: Number,
+    default: 3600,
+    env: 'RATELIMIT_AUTH_WINDOW_SECONDS'
+  },
+  turnstile_site_key: {
+    format: String,
+    default: '',
+    env: 'TURNSTILE_SITE_KEY'
+  },
+  turnstile_secret: {
+    format: String,
+    default: '',
+    env: 'TURNSTILE_SECRET'
+  },
+  stripe_secret_key: {
+    format: String,
+    default: '',
+    env: 'STRIPE_SECRET_KEY'
+  },
+  stripe_price_id: {
+    format: String,
+    default: '',
+    env: 'STRIPE_PRICE_ID'
+  },
+  stripe_webhook_secret: {
+    format: String,
+    default: '',
+    env: 'STRIPE_WEBHOOK_SECRET'
   },
   l10n_dev: {
     format: Boolean,
@@ -147,53 +268,13 @@ const conf = convict({
   },
   base_url: {
     format: 'url',
-    default: 'https://send.firefox.com',
+    default: 'http://localhost:1443',
     env: 'BASE_URL'
   },
   file_dir: {
     format: 'String',
     default: `${tmpdir()}${path.sep}send-${randomBytes(4).toString('hex')}`,
     env: 'FILE_DIR'
-  },
-  fxa_required: {
-    format: Boolean,
-    default: false,
-    env: 'FXA_REQUIRED'
-  },
-  fxa_url: {
-    format: 'url',
-    default: 'http://localhost:3030',
-    env: 'FXA_URL'
-  },
-  fxa_client_id: {
-    format: String,
-    default: '', // disabled
-    env: 'FXA_CLIENT_ID'
-  },
-  fxa_key_scope: {
-    format: String,
-    default: 'https://identity.mozilla.com/apps/send',
-    env: 'FXA_KEY_SCOPE'
-  },
-  fxa_csp_oauth_url: {
-    format: String,
-    default: '',
-    env: 'FXA_CSP_OAUTH_URL'
-  },
-  fxa_csp_content_url: {
-    format: String,
-    default: '',
-    env: 'FXA_CSP_CONTENT_URL'
-  },
-  fxa_csp_profile_url: {
-    format: String,
-    default: '',
-    env: 'FXA_CSP_PROFILE_URL'
-  },
-  fxa_csp_profileimage_url: {
-    format: String,
-    default: '',
-    env: 'FXA_CSP_PROFILEIMAGE_URL'
   },
   survey_url: {
     format: String,

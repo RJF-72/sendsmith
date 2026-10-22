@@ -3,7 +3,9 @@ const storage = require('../storage');
 const config = require('../config');
 const mozlog = require('../log');
 const Limiter = require('../limiter');
-const fxa = require('../fxa');
+const users = require('../users');
+const botgate = require('../middleware/botgate');
+const ratelimit = require('../middleware/ratelimit');
 const { statUploadEvent } = require('../amplitude');
 const { encryptedSize } = require('../../app/utils');
 
@@ -30,7 +32,38 @@ module.exports = function(ws, req) {
       const dlimit = fileInfo.dlimit || 1;
       const metadata = fileInfo.fileMetadata;
       const auth = fileInfo.authorization;
-      const user = await fxa.verify(fileInfo.bearer);
+
+      // Abuse gating (SendSmith): per-IP upload rate limit first,
+      // then the optional bot gate, then account resolution.
+      const rl = await ratelimit.checkNamed('upload', req);
+      if (!rl.allowed) {
+        ws.send(
+          JSON.stringify({
+            error: 429
+          })
+        );
+        return ws.close();
+      }
+      if (botgate.enabled()) {
+        const passed = await botgate.verify(
+          fileInfo.botToken,
+          ratelimit.clientIp(req)
+        );
+        if (!passed) {
+          ws.send(
+            JSON.stringify({
+              error: 403
+            })
+          );
+          return ws.close();
+        }
+      }
+
+      // The tier seam: a verified SendSmith session (cookie or Bearer
+      // session token in the legacy `bearer` field) raises the limits;
+      // the monthly quota is enforced for account users in
+      // users.checkQuota and accounted after the upload completes.
+      const user = await users.verifyRequest(req, fileInfo.bearer);
       const maxFileSize = user
         ? config.max_file_size
         : config.anon_max_file_size;
@@ -41,13 +74,16 @@ module.exports = function(ws, req) {
         ? config.max_downloads
         : config.anon_max_downloads;
 
-      if (config.fxa_required && !user) {
-        ws.send(
-          JSON.stringify({
-            error: 401
-          })
-        );
-        return ws.close();
+      if (user) {
+        const quota = await users.checkQuota(user);
+        if (!quota.ok) {
+          ws.send(
+            JSON.stringify({
+              error: 402
+            })
+          );
+          return ws.close();
+        }
       }
       if (
         !metadata ||
@@ -66,6 +102,10 @@ module.exports = function(ws, req) {
 
       const meta = {
         owner,
+        // Legacy field name from the FxA era; means "uploaded by a
+        // verified account" (now a SendSmith account). Kept so the
+        // stored metadata shape — and the backend test suite's
+        // expectations — stay stable.
         fxa: user ? 1 : 0,
         metadata,
         dlimit,
@@ -99,6 +139,14 @@ module.exports = function(ws, req) {
       fileStream = wsStream.pipe(eof).pipe(limiter); // limiter needs to be the last in the chain
 
       await storage.set(newId, fileStream, meta, timeLimit);
+
+      if (user) {
+        // Monthly transfer quota accounting (actual encrypted bytes
+        // received). Enforcement happens at upload start in
+        // users.checkQuota — a single upload can overshoot the
+        // remaining quota by at most one max-size file.
+        await users.addUsage(user.id, limiter.length);
+      }
 
       if (ws.readyState === 1) {
         // if the socket is closed by a cancelled upload the stream

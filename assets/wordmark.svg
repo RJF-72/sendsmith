@@ -1,2 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 64">
+  <!-- SendSmith wordmark. The #logo group is positioned for the header's
+       <use> viewport (viewBox "66 0 340 64"): the mark sits at x=66..126
+       and the text runs from x=140. Original artwork. -->
+  <g id="logo">
+    <g transform="translate(66,0)">
+      <path d="M40 3 L61 13 L45 21 L41 31 L43.5 18.5 L34 10 Z" fill="#ff7a1a"/>
+      <path d="M43.5 18.5 L34 10 L61 13 Z" fill="#ffa25e"/>
+      <path d="M3 27 L14 24.5 L14 31 L30 31 L30 35.5 L25 35.5 L25 40 L31 44 L31 47 L16 47 L16 44 L22 40 L22 35.5 L17 35.5 L17 31 L8 31 Z" fill="#2b2320"/>
+      <rect x="12" y="47" width="24" height="4" rx="1" fill="#2b2320"/>
+      <circle cx="52" cy="34" r="2.2" fill="#ff7a1a"/>
+    </g>
+    <text x="140" y="44" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="700" letter-spacing="-0.5">
+      <tspan fill="#2b2320">Send</tspan><tspan fill="#ff7a1a">Smith</tspan>
+    </text>
+  </g>
 </svg>

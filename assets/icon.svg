@@ -1,2 +1,12 @@
-<svg  viewBox="0 0 65 64" height="64" width="65" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg viewBox="0 0 64 64" height="64" width="64" xmlns="http://www.w3.org/2000/svg">
+  <!-- SendSmith mark: an anvil (the smith) with an ember paper plane (the send). Original artwork, MPL-2.0 project asset. -->
+  <!-- paper plane, ember orange -->
+  <path d="M40 3 L61 13 L45 21 L41 31 L43.5 18.5 L34 10 Z" fill="#ff7a1a"/>
+  <path d="M43.5 18.5 L34 10 L61 13 Z" fill="#ffa25e"/>
+  <!-- anvil, forge charcoal -->
+  <path d="M3 27 L14 24.5 L14 31 L30 31 L30 35.5 L25 35.5 L25 40 L31 44 L31 47 L16 47 L16 44 L22 40 L22 35.5 L17 35.5 L17 31 L8 31 Z" fill="#2b2320"/>
+  <rect x="12" y="47" width="24" height="4" rx="1" fill="#2b2320"/>
+  <!-- sparks -->
+  <circle cx="52" cy="34" r="2.2" fill="#ff7a1a"/>
+  <circle cx="57" cy="41" r="1.5" fill="#ffa25e"/>
 </svg>

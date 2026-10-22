@@ -1,0 +1,16 @@
+(node:9629) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+/home/hatch/workspace/sendsmith/server/wsServer.js:32
+        uploadHandler(ws, req).catch(err => {
+                              ^
+
+TypeError: Cannot read properties of undefined (reading 'catch')
+    at /home/hatch/workspace/sendsmith/server/wsServer.js:32:31
+    at WebSocketServer.completeUpgrade (/home/hatch/workspace/sendsmith/node_modules/ws/lib/websocket-server.js:450:5)
+    at WebSocketServer.handleUpgrade (/home/hatch/workspace/sendsmith/node_modules/ws/lib/websocket-server.js:356:10)
+    at Server.<anonymous> (/home/hatch/workspace/sendsmith/server/wsServer.js:31:11)
+    at Server.emit (node:events:519:28)
+    at onParserExecuteCommon (node:_http_server:977:14)
+    at onParserExecute (node:_http_server:881:3)
+
+Node.js v22.21.1
