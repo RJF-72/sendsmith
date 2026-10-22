@@ -4,6 +4,7 @@ const HomePage = require('./pages/desktop/home_page');
 
 describe('Firefox Send progress page', function() {
   const homePage = new HomePage();
+
   beforeEach(function() {
     homePage.open();
   });

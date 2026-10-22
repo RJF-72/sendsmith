@@ -14,6 +14,7 @@ const config = require('./config');
 function fail(message) {
   // eslint-disable-next-line no-console
   console.error(`\nSendSmith configuration error:\n  ${message}\n`);
+  // eslint-disable-next-line no-process-exit
   process.exit(1);
 }
 

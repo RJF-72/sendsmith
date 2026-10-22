@@ -16,7 +16,6 @@
  * Uses the app's own config (REDIS_HOST, storage backend, ...) —
  * run it in the same environment as the server.
  */
-const config = require('../server/config');
 
 async function main() {
   const args = process.argv.slice(2);

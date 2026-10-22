@@ -4,4 +4,13 @@ firefox
 coverage
 android/app/build
 app/locale.js
-app/capabilities.js
+app/capabilities.js# Legacy browser-test harness (not part of the launch test path;
+# see docs/UPGRADING.md "Known deferred maintenance")
+test/frontend
+test/testServer.js
+test/wdio.circleci.conf.js
+test/wdio.common.conf.js
+test/wdio.docker.conf.js
+test/wdio.local.conf.js
+test/wdio.remote.config.js
+test/wdio.saucelabs.config.js

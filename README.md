@@ -52,8 +52,8 @@ npm run test:backend   # unit + golden-vector tests
 npm run test:e2e       # protocol e2e against a running server
 ```
 
-Hot-reload dev server: `npm run dev` (webpack-dev-server, port 8080 +
-WebSocket backend on 1338).
+Dev server with hot rebuild: `npm start` (webpack-dev-server on
+port 1337, WebSocket backend on 1338).
 
 ## Production
 

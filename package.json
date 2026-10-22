@@ -26,7 +26,7 @@
     "ua-parser-js": "^1.0.40",
     "ws": "^8.18.0"
   },
-  "description": "SendSmith \u2014 encrypted file transfer that self-destructs. Send it. Gone.",
+  "description": "SendSmith — encrypted file transfer that self-destructs. Send it. Gone.",
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
@@ -48,7 +48,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-mocha": "^10.5.0",
     "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-security": "^1.7.1",
     "fast-text-encoding": "^1.0.6",
     "http_ece": "^1.1.0",
     "mini-css-extract-plugin": "^2.9.2",
@@ -69,6 +69,7 @@
     "string-hash": "^1.1.3",
     "stylelint": "^16.12.0",
     "stylelint-config-standard": "^36.0.1",
+    "stylelint-no-unsupported-browser-features": "^8.1.2",
     "tailwindcss": "^3.4.17",
     "val-loader": "^6.0.0",
     "web-streams-polyfill": "^4.0.1",

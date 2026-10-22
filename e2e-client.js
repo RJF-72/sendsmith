@@ -247,5 +247,6 @@ function check(name, cond, extra) {
 })().catch(e => {
   console.log(results.join('\n'));
   console.error('E2E ERROR:', e && e.message);
+  // eslint-disable-next-line no-process-exit
   process.exit(2);
 });

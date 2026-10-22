@@ -6,7 +6,7 @@
 const config = require('../config');
 const users = require('../users');
 
-function isSecure(req) {
+function isSecure() {
   return config.env === 'production';
 }
 
@@ -20,7 +20,7 @@ module.exports = {
       const { email, password } = req.body || {};
       const user = await users.createUser(email, password);
       const token = await users.createSession(user.id);
-      res.set('Set-Cookie', users.sessionCookie(token, { secure: isSecure(req) }));
+      res.set('Set-Cookie', users.sessionCookie(token, { secure: isSecure() }));
       res.status(201).json(publicUser(user));
     } catch (e) {
       if (e.code === 'email_taken') {
@@ -41,7 +41,7 @@ module.exports = {
         return res.status(401).json({ error: 'invalid_credentials' });
       }
       const token = await users.createSession(user.id);
-      res.set('Set-Cookie', users.sessionCookie(token, { secure: isSecure(req) }));
+      res.set('Set-Cookie', users.sessionCookie(token, { secure: isSecure() }));
       res.json(publicUser(user));
     } catch (e) {
       res.status(500).json({ error: 'internal' });
@@ -55,7 +55,7 @@ module.exports = {
     } catch (e) {
       // logout is best-effort; always clear the cookie
     }
-    res.set('Set-Cookie', users.clearSessionCookie({ secure: isSecure(req) }));
+    res.set('Set-Cookie', users.clearSessionCookie({ secure: isSecure() }));
     res.json({ ok: true });
   },
 
