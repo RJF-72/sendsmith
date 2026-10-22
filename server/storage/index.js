@@ -72,8 +72,11 @@ class DB {
     this.redis.expire(id, expireSeconds);
   }
 
-  setField(id, key, value) {
-    this.redis.hset(id, key, value);
+  async setField(id, key, value) {
+    // Awaited (unlike the upstream fire-and-forget hset) so short-lived
+    // callers like scripts/admin-takedown.js can't exit before the
+    // write lands.
+    await this.redis.hsetAsync(id, key, value);
   }
 
   async incrementField(id, key, increment = 1) {
@@ -83,14 +86,14 @@ class DB {
   async kill(id) {
     const { filePath, dead } = await this.getPrefixedInfo(id);
     if (!dead) {
-      this.redis.hset(id, 'dead', 1);
+      await this.redis.hsetAsync(id, 'dead', 1);
       this.storage.del(filePath);
     }
   }
 
   async flag(id) {
     await this.kill(id);
-    this.redis.hset(id, 'flagged', 1);
+    await this.redis.hsetAsync(id, 'flagged', 1);
   }
 
   async del(id) {

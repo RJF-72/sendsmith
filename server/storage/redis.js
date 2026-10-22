@@ -63,7 +63,7 @@ module.exports = function(config) {
   };
   client.hgetAsync = (...args) => client.hGet(...args);
   client.hincrbyAsync = (...args) => client.hIncrBy(...args);
-  client.hmgetAsync = (...args) => client.hMGet(...args);
+  client.hmgetAsync = (...args) => client.hmGet(...args);
   client.pingAsync = (...args) => client.ping(...args);
   client.existsAsync = (...args) => client.exists(...args);
   client.getAsync = (...args) => client.get(...args);

@@ -62,13 +62,14 @@ module.exports = {
   async me(req, res) {
     const user = await users.verifyRequest(req);
     if (!user) {
-      return res.status(401).json({ error: 'not_logged_in' });
+      return res.status(401).json({ loggedIn: false, error: 'not_logged_in' });
     }
     const quota = await users.checkQuota(user);
     res.json({
+      loggedIn: true,
       ...publicUser(user),
-      usage: quota.usage,
-      quota: quota.limit
+      usageBytes: quota.usage,
+      quotaBytes: quota.limit
     });
   }
 };

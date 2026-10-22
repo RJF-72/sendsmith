@@ -175,7 +175,10 @@ module.exports = function(ws, req) {
       if (ws.readyState === 1) {
         ws.send(
           JSON.stringify({
-            error: e === 'limit' ? 413 : 500
+            // server/limiter.js fails the stream with Error('limit');
+            // the upstream comparison against the bare string 'limit'
+            // never matched, so size-limit rejections surfaced as 500.
+            error: e && e.message === 'limit' ? 413 : 500
           })
         );
       }

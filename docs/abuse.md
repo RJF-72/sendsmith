@@ -11,7 +11,7 @@ limits, friction, reporting, and fast takedown instead.
   (`RATELIMIT_UPLOAD_MAX`), downloads/hour (`RATELIMIT_DOWNLOAD_MAX`),
   reports/day (`RATELIMIT_REPORT_MAX`), auth attempts/hour
   (`RATELIMIT_AUTH_MAX`). Hitting a limit returns HTTP 429 with
-  `Retry-After`. Verify with `scripts/verify-abuse-controls.sh` after
+  `Retry-After`. Verify with `scripts/verify-features.js` after
   deployment changes.
 - **Anonymous tier limits**: max file size `ANON_MAX_FILE_SIZE`
   (default 200 MB), max TTL 24 h, max 5 downloads. Account (free) tier

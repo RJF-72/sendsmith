@@ -23,8 +23,8 @@ async function main() {
   const storage = require('../server/storage');
 
   if (args.includes('--list-reports')) {
-    const reports = await storage.redis.lrangeAsync
-      ? storage.redis.lrangeAsync('public_reports', 0, 99)
+    const reports = storage.redis.lrangeAsync
+      ? await storage.redis.lrangeAsync('public_reports', 0, 99)
       : [];
     if (!reports.length) {
       console.log('No public reports in the queue.');
@@ -51,7 +51,7 @@ async function main() {
   }
 
   if (args.includes('--restore')) {
-    storage.setField(id, 'pubflag', '');
+    await storage.redis.hsetAsync(id, 'pubflag', '');
     console.log(`Cleared public-report flag on ${id} (file unchanged).`);
     process.exit(0);
   }
