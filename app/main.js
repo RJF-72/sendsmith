@@ -71,4 +71,12 @@ if (process.env.NODE_ENV === 'production') {
   app.use(dragManager);
   app.use(pasteManager);
   app.mount('body');
+
+  // Restore the SendSmith account session (httpOnly cookie) if the
+  // visitor has one; the cached user info may be stale or absent.
+  window.initialState.user.refresh().then(ok => {
+    if (ok) {
+      app.emitter.emit('signedIn');
+    }
+  });
 })();

@@ -93,6 +93,21 @@ class Account extends Component {
           onblur="${e => this.hideMenu(e)}"
         >
           <li class="p-2 text-grey-60 dark:text-grey-50">${user.email}</li>
+          ${this.state.authConfig && this.state.authConfig.billingEnabled
+            ? html`
+                <li>
+                  <button
+                    class="block w-full text-left px-4 py-2 text-grey-80 dark:text-grey-30 hover:bg-blue-50 hover:text-white cursor-pointer focus:outline"
+                    onclick="${e => {
+                      e.preventDefault();
+                      this.emit(user.isPro ? 'openPortal' : 'openCheckout');
+                    }}"
+                  >
+                    ${user.isPro ? 'Manage subscription' : 'Upgrade to Pro'}
+                  </button>
+                </li>
+              `
+            : ''}
           <li>
             <button
               class="block w-full text-left px-4 py-2 text-grey-80 dark:text-grey-30 hover:bg-blue-50 hover:text-white cursor-pointer focus:outline"

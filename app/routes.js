@@ -9,12 +9,15 @@ module.exports = function(app = choo({ hash: true })) {
   app.route('/unsupported/:reason', body(require('./ui/unsupported')));
   app.route('/error', body(require('./ui/error')));
   app.route('/blank', body(require('./ui/blank')));
+  // The FxA OAuth callback route is gone; keep a soft landing for
+  // stale bookmarks.
   app.route('/oauth', function(state, emit) {
-    emit('authenticate', state.query.code, state.query.state);
+    emit('replaceState', '/');
+    setTimeout(() => emit('render'));
   });
   app.route('/login', function(state, emit) {
     emit('replaceState', '/');
-    setTimeout(() => emit('render'));
+    setTimeout(() => emit('signup-cta', 'login'));
   });
   app.route('/report', body(require('./ui/report')));
   app.route('*', body(require('./ui/notFound')));

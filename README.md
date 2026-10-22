@@ -1,119 +1,83 @@
-# Firefox Send
+# SendSmith
 
-[![CircleCI](https://img.shields.io/circleci/project/github/mozilla/send.svg)](https://circleci.com/gh/mozilla/send)
+**Send it. Gone.** — encrypted file transfer that self-destructs.
 
-## NOTICE - May 2021
+SendSmith is a private file-sharing service: files are encrypted in
+your browser with a key that never leaves your device, shared via a
+link that automatically expires after a set number of downloads or a
+set time. The server stores only ciphertext and cannot read what you
+send.
 
-Mozilla discontinued the Firefox Send service in September 2021. For more information about this, please see the [Mozilla Blog](https://blog.mozilla.org/blog/2020/09/17/update-on-firefox-send-and-firefox-notes/).
+> **Provenance:** SendSmith is an independent relaunch based on
+> Mozilla's archived Firefox Send source code (MPL-2.0). **Not
+> affiliated with Mozilla.** See [NOTICE](NOTICE) and
+> [docs/UPGRADING.md](docs/UPGRADING.md) for the MPL compliance
+> checklist. The upstream README is preserved as
+> [UPSTREAM_README.md](UPSTREAM_README.md).
 
-Please note that the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/) does not "grant any rights in the trademarks, service marks, or logos of any Contributor." You may fork and modify the source code for Firefox Send pursuant to the Mozilla Public License, but you may not create a version of the service that uses Mozilla trademarks or logos.
+## Features
 
-This repository is archived. In May 2021, Mozilla removed Mozilla trademarks from some of the files in this repository so that developers using this code are less likely to inadvertently infringe Mozilla's trademarks and confuse users. You are welcome to copy and modify this code under its open source license, but please ensure that all use complies with [Mozilla's trademark policy](https://www.mozilla.org/en-US/foundation/trademarks/policy/). In other words, if you create a new version of Firefox Send you must remove all "Mozilla" and "Firefox" branding to ensure that users are not confused about who is providing the service.
+- End-to-end encrypted transfers (ECE / RFC 8188 `aes128gcm`), format
+  documented in [docs/FORMAT.md](docs/FORMAT.md) and locked by golden
+  test vectors — links stay decryptable across future upgrades.
+- Self-destructing links: TTL + download-count limits.
+- Optional password protection on links.
+- Anonymous sending (200 MB / 24 h / 5 downloads by default) and
+  optional accounts with higher limits and monthly quotas; a paid
+  **Pro** tier via Stripe when configured.
+- Abuse controls: per-IP rate limits, optional Cloudflare Turnstile,
+  public abuse reporting with human-review takedown
+  ([docs/abuse.md](docs/abuse.md)). Zero-knowledge by design — content
+  scanning is impossible, and the docs say so plainly.
 
-**Docs:** [FAQ](docs/faq.md), [Encryption](docs/encryption.md), [Build](docs/build.md), [Docker](docs/docker.md), [Metrics](docs/metrics.md), [More](docs/)
+## Quick start (development)
 
----
+Requires Node.js 20–24 (22 LTS recommended; see `.nvmrc`) and npm.
 
-## Table of Contents
-
-* [What it does](#what-it-does)
-* [Requirements](#requirements)
-* [Development](#development)
-* [Commands](#commands)
-* [Configuration](#configuration)
-* [Localization](#localization)
-* [Contributing](#contributing)
-* [Testing](#testing)
-* [Deployment](#deployment)
-* [Android](#android)
-* [License](#license)
-
----
-
-## What it does
-
-A file sharing experiment which allows you to send encrypted files to other users.
-
----
-
-## Requirements
-
-- [Node.js 12.x](https://nodejs.org/)
-- [Redis server](https://redis.io/) (optional for development)
-- [AWS S3](https://aws.amazon.com/s3/) or compatible service (optional)
-
----
-
-## Development
-
-To start an ephemeral development server, run:
-
-```sh
-npm install
-npm start
+```bash
+npm ci
+npm run build
+FILE_DIR=./data node server/bin/prod.js
+# → http://localhost:1443 (heartbeats at /__heartbeat__, /__lbheartbeat__)
 ```
 
-Then, browse to http://localhost:8080
+Development uses an in-memory Redis mock and local file storage —
+fine for hacking, **not** for production (production mode refuses the
+mock; see `server/validateConfig.js`).
 
----
+Tests:
 
-## Commands
+```bash
+npm run test:backend   # unit + golden-vector tests
+npm run test:e2e       # protocol e2e against a running server
+```
 
-| Command          | Description |
-|------------------|-------------|
-| `npm run format` | Formats the frontend and server code using **prettier**.
-| `npm run lint`   | Lints the CSS and JavaScript code.
-| `npm test`       | Runs the suite of mocha tests.
-| `npm start`      | Runs the server in development configuration.
-| `npm run build`  | Builds the production assets.
-| `npm run prod`   | Runs the server in production configuration.
+Hot-reload dev server: `npm run dev` (webpack-dev-server, port 8080 +
+WebSocket backend on 1338).
 
----
+## Production
 
-## Configuration
+```bash
+cp .env.example .env   # set BASE_URL, storage, secrets
+docker compose up -d   # app + Redis with persistence
+```
 
-The server is configured with environment variables. See [server/config.js](server/config.js) for all options and [docs/docker.md](docs/docker.md) for examples.
+Or run directly: `NODE_ENV=production` with a real Redis
+(`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`) and either an
+S3-compatible bucket (`S3_BUCKET`, `S3_ENDPOINT` for R2/B2/MinIO,
+`S3_USE_PATH_STYLE_ENDPOINT`), a GCS bucket (`GCS_BUCKET`), or a
+persistent `FILE_DIR`. Every setting is an environment variable —
+[.env.example](.env.example) lists them all. Optional integrations
+(Turnstile, Stripe, Sentry) are **off unless fully configured**.
 
----
+## Upgrades & maintenance
 
-## Localization
-
-Firefox Send localization is managed via [Pontoon](https://pontoon.mozilla.org/projects/test-pilot-firefox-send/), not direct pull requests to the repository. If you want to fix a typo, add a new language, or simply know more about localization, please get in touch with the [existing localization team](https://pontoon.mozilla.org/teams/) for your language or Mozilla’s [l10n-drivers](https://wiki.mozilla.org/L10n:Mozilla_Team#Mozilla_Corporation) for guidance.
-
-see also [docs/localization.md](docs/localization.md)
-
----
-
-## Contributing
-
-Pull requests are always welcome! Feel free to check out the list of ["good first issues"](https://github.com/mozilla/send/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
-
----
-
-## Testing
-
-| ENVIRONMENT | URL
-|-------------|-----
-| Production  | <https://send.firefox.com/>
-| Stage       | <https://stage.send.nonprod.cloudops.mozgcp.net/>
-| Development | <https://send2.dev.lcip.org/>
-
----
-
-## Deployment
-
-see also [docs/deployment.md](docs/deployment.md)
-
----
-
-## Android
-
-The android implementation is contained in the `android` directory, and can be viewed locally for easy testing and editing by running `ANDROID=1 npm start` and then visiting <http://localhost:8080>. CSS and image files are located in the `android/app/src/main/assets` directory.
-
----
+[docs/UPGRADING.md](docs/UPGRADING.md) is the runbook: Node LTS
+checklist, dependency-bump procedure, Redis/S3 swap notes, MPL
+checklist. Dependabot + CI configs ship in `.github/`.
 
 ## License
 
-[Mozilla Public License Version 2.0](LICENSE)
-
----
+Mozilla Public License 2.0 — see [LICENSE](LICENSE). Upstream
+copyright notices are preserved throughout; new SendSmith code is
+marked as such in file headers.

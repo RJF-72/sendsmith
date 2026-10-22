@@ -8,7 +8,17 @@ try {
   // NOOP
 }
 if (!fileProtocolWssUrl) {
-  fileProtocolWssUrl = 'wss://send.firefox.com/api/ws';
+  // Was hardcoded to Mozilla's production host in the FxA era. The
+  // file: protocol case only occurred inside the (now removed) native
+  // shells; on the web the socket URL is always derived from
+  // window.location (see fileSender.js). Default to the serving origin.
+  const proto =
+    typeof location !== 'undefined' && location.protocol === 'https:'
+      ? 'wss:'
+      : 'ws:';
+  const host =
+    typeof location !== 'undefined' ? location.host : 'localhost:1443';
+  fileProtocolWssUrl = `${proto}//${host}/api/ws`;
 }
 
 export class ConnectionError extends Error {
@@ -388,9 +398,10 @@ export function downloadFile(id, dlToken, onprogress) {
   };
 }
 
-export async function getFileList(bearerToken, kid) {
-  const headers = new Headers({ Authorization: `Bearer ${bearerToken}` });
-  const response = await fetch(getApiUrl(`/api/filelist/${kid}`), { headers });
+// Authenticated by the SendSmith session cookie (same-origin fetch
+// sends it automatically); there is no bearer token anymore.
+export async function getFileList(kid) {
+  const response = await fetch(getApiUrl(`/api/filelist/${kid}`));
   if (response.ok) {
     const encrypted = await response.blob();
     return encrypted;
@@ -398,10 +409,8 @@ export async function getFileList(bearerToken, kid) {
   throw new Error(response.status);
 }
 
-export async function setFileList(bearerToken, kid, data) {
-  const headers = new Headers({ Authorization: `Bearer ${bearerToken}` });
+export async function setFileList(kid, data) {
   const response = await fetch(getApiUrl(`/api/filelist/${kid}`), {
-    headers,
     method: 'POST',
     body: data
   });

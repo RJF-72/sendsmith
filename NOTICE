@@ -1,0 +1,16 @@
+NOTICE
+
+SendSmith is an independent relaunch based on Mozilla's archived
+Firefox Send source code, available at
+https://github.com/mozilla/send (HEAD ade10e4, v3.0.22), used under
+the terms of the Mozilla Public License, v. 2.0 (see LICENSE).
+
+SendSmith is not affiliated with, endorsed by, or sponsored by
+Mozilla. "Firefox", "Mozilla", and the Firefox logo are trademarks of
+the Mozilla Foundation; the MPL-2.0 grants no rights in them, and
+SendSmith uses none of them. All Firefox/Mozilla branding, assets, and
+service endpoints were removed during the relaunch.
+
+Changes made on top of the upstream source are recorded in this
+repository's git history (the first commit is the pristine upstream
+import) and summarized in BUILD_REPORT.md.

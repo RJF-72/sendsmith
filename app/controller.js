@@ -6,6 +6,7 @@ import { bytes, locale } from './utils';
 import okDialog from './ui/okDialog';
 import copyDialog from './ui/copyDialog';
 import shareDialog from './ui/shareDialog';
+import authDialog from './ui/authDialog';
 
 export default function(state, emitter) {
   let lastRender = 0;
@@ -43,8 +44,64 @@ export default function(state, emitter) {
     lastRender = Date.now();
   });
 
-  emitter.on('login', email => {
-    state.user.login(email);
+  emitter.on('login', () => {
+    emitter.emit('signup-cta', 'login');
+  });
+
+  emitter.on('signup-cta', mode => {
+    state.authMode = mode === 'signup' ? 'signup' : 'login';
+    state.authError = null;
+    state.modal = authDialog;
+    render();
+  });
+
+  emitter.on('signedIn', async () => {
+    await checkFiles();
+    render();
+  });
+
+  emitter.on('auth-mode', mode => {
+    state.authMode = mode === 'login' ? 'login' : 'signup';
+    state.authError = null;
+    render();
+  });
+
+  emitter.on('auth-submit', async ({ mode, email, password, botToken }) => {
+    try {
+      if (mode === 'signup') {
+        await state.user.signup(email, password, botToken);
+      } else {
+        await state.user.login(email, password, botToken);
+      }
+      state.modal = null;
+      state.authError = null;
+      emitter.emit('signedIn', state.user.info);
+    } catch (e) {
+      state.authError = e.message || 'Something went wrong';
+      render();
+    }
+  });
+
+  emitter.on('openCheckout', async () => {
+    try {
+      const result = await state.user.startCheckout();
+      if (result && result.url) {
+        location.assign(result.url);
+      }
+    } catch (e) {
+      // billing not configured / unavailable — leave the UI as-is
+    }
+  });
+
+  emitter.on('openPortal', async () => {
+    try {
+      const result = await state.user.openPortal();
+      if (result && result.url) {
+        location.assign(result.url);
+      }
+    } catch (e) {
+      // no portal available for this user
+    }
   });
 
   emitter.on('logout', async () => {
@@ -108,16 +165,9 @@ export default function(state, emitter) {
     render();
   });
 
-  emitter.on('authenticate', async (code, oauthState) => {
-    try {
-      await state.user.finishLogin(code, oauthState);
-      await state.user.syncFileList();
-      emitter.emit('replaceState', '/');
-    } catch (e) {
-      emitter.emit('replaceState', '/error');
-      setTimeout(render);
-    }
-  });
+  // (The old 'authenticate' OAuth-callback handler is gone with the
+  // FxA flow; SendSmith logins complete inside the auth dialog and
+  // emit 'signedIn'.)
 
   emitter.on('upload', async () => {
     if (state.storage.files.length >= state.LIMITS.MAX_ARCHIVES_PER_USER) {

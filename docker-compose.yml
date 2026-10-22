@@ -1,19 +1,31 @@
-version: "3"
+# SendSmith — minimal production-shaped stack: app + Redis.
+# Copy .env.example to .env first and set BASE_URL (the app service
+# below overrides REDIS_HOST to "redis").
 services:
-  web:
+  app:
     build: .
-    links:
-      - redis
     ports:
       - "1443:1443"
+    env_file:
+      - .env
     environment:
-      - REDIS_HOST=redis
-  redis:
-    image: redis:alpine
-  selenium-firefox:
-    image: b4handjr/selenium-firefox
-    ports:
-      - "${VNC_PORT:-5900}:5900"
-    shm_size: 2g
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      FILE_DIR: /app/data
     volumes:
-      - .:/code
+      - senddata:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  senddata:
+  redisdata:
